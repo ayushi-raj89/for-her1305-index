@@ -44,18 +44,35 @@ function saveSupabaseCredentials(url, key) {
 // Check connection settings
 async function testSupabaseConnection(url, key) {
     try {
+        if (!window.supabase) {
+            return { success: false, message: "Supabase library not loaded. Check your internet connection." };
+        }
         const tempClient = window.supabase.createClient(url.trim(), key.trim());
-        // Try fetching a lightweight structure to check credentials
-        const { error } = await tempClient.from('memories').select('id').limit(1);
         
-        // If table doesn't exist, it's still connected! It just means tables need to be created.
-        if (error && error.code !== 'PGRST116' && error.message.includes('FetchError')) {
-            return { success: false, message: "Network fetch error. Check URL." };
-        } else if (error && error.message.includes('Invalid API key')) {
-            return { success: false, message: "Invalid API key/Anon key." };
+        // Use Promise.race to enforce a 5-second timeout on the network request
+        const fetchPromise = tempClient.from('memories').select('id').limit(1);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Connection timed out. Check if your URL is correct.")), 5000)
+        );
+        
+        const { error } = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        if (error) {
+            console.log("Supabase connection check returned an error:", error);
+            
+            // Check for invalid API key / unauthorized (401 status or message match)
+            if (error.message && (error.message.includes('Invalid API key') || error.message.includes('JWT') || error.code === '401' || error.status === 401)) {
+                return { success: false, message: "Invalid Anon Key / API key." };
+            }
+            
+            // Check for direct network failure
+            if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('TypeError'))) {
+                return { success: false, message: "Network fetch failed. Verify your project URL." };
+            }
         }
         return { success: true };
     } catch (e) {
+        console.error("Connection test failed with exception:", e);
         return { success: false, message: e.message || "Invalid connection details." };
     }
 }
