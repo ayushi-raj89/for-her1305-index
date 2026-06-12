@@ -37,6 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Call manual init for form inputs loading
     initDbConfigInputs();
+    
+    // Trigger initial Supabase connection status check and data load
+    if (typeof initSupabase === 'function') {
+        initSupabase();
+    }
 });
 
 // Set up Date Picker limits and default values
@@ -690,8 +695,8 @@ const DEFAULT_PLAYLIST = [
 
 // --- Database Configuration Panel UI Handler ---
 function initDbConfigInputs() {
-    const url = localStorage.getItem('SUPABASE_URL') || "";
-    const key = localStorage.getItem('SUPABASE_ANON_KEY') || "";
+    const url = localStorage.getItem('SUPABASE_URL') || window.SUPABASE_URL || "";
+    const key = localStorage.getItem('SUPABASE_ANON_KEY') || window.SUPABASE_ANON_KEY || "";
     
     const urlInput = document.getElementById('db-url');
     const keyInput = document.getElementById('db-key');
